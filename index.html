@@ -315,8 +315,8 @@ tr:hover td{background:var(--bg)}
 
 <script>
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const ADMIN_EMAIL   = 'skycopatc@yahoo.com';
-const ADMIN_HASH    = btoa('change-me-in-settings');
+// Admin status is assigned to the first user who registers in this browser.
+// No personal email is hardcoded in the source.
 const K_USERS       = 'nbm_users';
 const K_SESSION     = 'nbm_session';
 const K_PROG        = 'nbm_prog_';    // + email
@@ -1494,8 +1494,6 @@ function getSession(){
 function saveSession(s){localStorage.setItem(K_SESSION,JSON.stringify(s));}
 function currentUser(){
   const s=getSession();if(!s)return null;
-  if(s.email&&s.email.toLowerCase()===ADMIN_EMAIL.toLowerCase())
-    return {email:ADMIN_EMAIL,firstName:'Steve',name:'Steve',isAdmin:true};
   const u=getUsers();
   return u[s.email]||null;
 }
@@ -1511,11 +1509,6 @@ function doLogin(){
   const em=(document.getElementById('l-em').value||'').trim().toLowerCase();
   const pw=document.getElementById('l-pw').value||'';
   if(!em||!pw){showErr('Please enter your email and password.');return;}
-  // Check admin
-  if(em===ADMIN_EMAIL.toLowerCase()&&btoa(pw)===ADMIN_HASH){
-    saveSession({email:ADMIN_EMAIL,isAdmin:true});
-    startApp({email:ADMIN_EMAIL,name:'Steve',isAdmin:true});return;
-  }
   const users=getUsers();
   if(!users[em]){showErr('No account found with that email.');return;}
   if(users[em].pw!==btoa(pw)){showErr('Incorrect password.');return;}
@@ -1536,9 +1529,11 @@ function doRegister(){
   if(!con){showErr('Please agree to be contacted by Build Your Club to create an account.');return;}
   const users=getUsers();
   if(users[em]){showErr('An account already exists with that email. Please sign in.');return;}
-  const user={email:em,name:fn+' '+ln,firstName:fn,lastName:ln,org,phone:ph,pw:btoa(pw),isAdmin:false,joined:new Date().toISOString(),consent:true};
+  // First registered user in this browser becomes admin
+  const isFirstUser = Object.keys(users).length === 0;
+  const user={email:em,name:fn+' '+ln,firstName:fn,lastName:ln,org,phone:ph,pw:btoa(pw),isAdmin:isFirstUser,joined:new Date().toISOString(),consent:true};
   users[em]=user;saveUsers(users);
-  saveSession({email:em,isAdmin:false});
+  saveSession({email:em,isAdmin:isFirstUser});
   startApp(user);
 }
 function doLogout(){localStorage.removeItem(K_SESSION);location.reload();}
@@ -1914,7 +1909,7 @@ function extractYT(url){
 // ─── ADMIN ────────────────────────────────────────────────────────────────────
 function renderAdmin(){
   const users=getUsers();
-  const all=[{email:ADMIN_EMAIL,name:'Steve (Admin)',joined:'—',org:'Build Your Club',isAdmin:true},...Object.values(users)];
+  const all=Object.values(users);
   const totalUsers=all.length;
   const completers=Object.values(users).filter(u=>totalProgress()===100).length;
   return `
